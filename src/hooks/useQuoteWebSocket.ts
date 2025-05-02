@@ -40,7 +40,7 @@ export const useQuoteWebSocket = () => {
   const [isConnected, setIsConnected] = useState(false);
   const socketRef = useRef<WebSocket | null>(null);
   const reconnectTimeoutRef = useRef<number | null>(null);
-  const [environment, setEnv] = useState<'local' | 'testing'>(getEnvironment());
+  const [environment] = useState<'local' | 'testing'>(getEnvironment());
 
   const wsUrl = WS_URLS[environment];
 
