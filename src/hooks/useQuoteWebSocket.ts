@@ -7,11 +7,42 @@ interface QuoteRequest {
   shipmentType: string;
 }
 
+// Configuración de WebSocket URLs por ambiente
+const WS_URLS = {
+  local: 'ws://127.0.0.1:8000/ws/quote',
+  testing: 'wss://rate-quote-assistant-backend.onrender.com/ws/quote'
+};
+
+// Por defecto, usar ambiente local en desarrollo y testing en producción
+const DEFAULT_ENV = import.meta.env.PROD ? 'testing' : 'local';
+
+// Obtener ambiente de variables de entorno o localStorage
+const getEnvironment = (): 'local' | 'testing' => {
+  // Primero intentar obtener desde localStorage (para permitir cambios en tiempo de ejecución)
+  const savedEnv = localStorage.getItem('quoteAssistantEnv');
+  if (savedEnv && (savedEnv === 'local' || savedEnv === 'testing')) {
+    return savedEnv;
+  }
+  
+  // Si no hay valor guardado, usar el valor por defecto
+  return DEFAULT_ENV;
+};
+
+// Función para cambiar el ambiente
+export const setEnvironment = (env: 'local' | 'testing'): void => {
+  localStorage.setItem('quoteAssistantEnv', env);
+  // Forzar recarga para aplicar el cambio
+  window.location.reload();
+};
+
 export const useQuoteWebSocket = () => {
   const [messages, setMessages] = useState<string[]>([]);
   const [isConnected, setIsConnected] = useState(false);
   const socketRef = useRef<WebSocket | null>(null);
   const reconnectTimeoutRef = useRef<number | null>(null);
+  const [environment, setEnv] = useState<'local' | 'testing'>(getEnvironment());
+
+  const wsUrl = WS_URLS[environment];
 
   const connectWebSocket = useCallback(() => {
     // Close any existing connection
@@ -19,8 +50,9 @@ export const useQuoteWebSocket = () => {
       socketRef.current.close();
     }
 
-    // Try both localhost and 127.0.0.1
-    const socket = new WebSocket('ws://127.0.0.1:8000/ws/quote');
+    // Use the environment-specific WebSocket URL
+    console.log(`Connecting to WebSocket at ${wsUrl} (${environment} environment)`);
+    const socket = new WebSocket(wsUrl);
 
     socket.onopen = () => {
       console.log('WebSocket connection established');
@@ -55,7 +87,7 @@ export const useQuoteWebSocket = () => {
     };
 
     socketRef.current = socket;
-  }, []);
+  }, [wsUrl, environment]);
 
   // Initialize WebSocket connection
   useEffect(() => {
@@ -79,6 +111,11 @@ export const useQuoteWebSocket = () => {
     console.log('Manually reconnecting WebSocket...');
     connectWebSocket();
   }, [connectWebSocket]);
+
+  // Function to change environment
+  const changeEnvironment = useCallback((newEnv: 'local' | 'testing') => {
+    setEnvironment(newEnv);
+  }, []);
 
   // Function to send quote request through WebSocket
   const sendQuoteRequest = useCallback((quoteData: QuoteRequest) => {
@@ -108,7 +145,9 @@ export const useQuoteWebSocket = () => {
     isConnected,
     sendQuoteRequest,
     resetMessages,
-    reconnect
+    reconnect,
+    environment,
+    changeEnvironment
   };
 };
 

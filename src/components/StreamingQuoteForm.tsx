@@ -16,7 +16,7 @@ export default function StreamingQuoteForm() {
     shipmentType: 'standard',
   });
   
-  const { messages, isConnected, sendQuoteRequest, reconnect } = useQuoteWebSocket();
+  const { messages, isConnected, sendQuoteRequest, reconnect, environment, changeEnvironment } = useQuoteWebSocket();
   const [showResults, setShowResults] = useState(false);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
@@ -38,6 +38,10 @@ export default function StreamingQuoteForm() {
     sendQuoteRequest(formData);
   };
 
+  const handleEnvironmentChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    changeEnvironment(e.target.value as 'local' | 'testing');
+  };
+
   // Filter out the [END] message and check if streaming is complete
   const filteredMessages = messages.filter(msg => msg !== '[END]');
   const isStreamingComplete = messages.includes('[END]');
@@ -47,25 +51,41 @@ export default function StreamingQuoteForm() {
       <h2 className="text-xl font-bold mb-4">Real-time Streaming Quote</h2>
       
       <div className="mb-4">
-        <div className="flex items-center">
-          <span className={`inline-block w-3 h-3 rounded-full ${isConnected ? 'bg-green-500' : 'bg-red-500'} mr-2`}></span>
-          <span className="text-sm text-gray-600">
-            {isConnected ? 'WebSocket Connected' : 'WebSocket Disconnected'}
-          </span>
+        <div className="flex flex-col md:flex-row md:items-center gap-2 mb-2">
+          <div className="flex items-center">
+            <span className={`inline-block w-3 h-3 rounded-full ${isConnected ? 'bg-green-500' : 'bg-red-500'} mr-2`}></span>
+            <span className="text-sm text-gray-600">
+              {isConnected ? 'WebSocket Connected' : 'WebSocket Disconnected'}
+            </span>
+          </div>
           
-          {!isConnected && (
-            <button 
-              onClick={reconnect}
-              className="ml-auto text-sm text-indigo-600 hover:text-indigo-800"
+          <div className="flex items-center ml-auto">
+            <label htmlFor="environment" className="text-sm mr-2">Environment:</label>
+            <select 
+              id="environment" 
+              value={environment}
+              onChange={handleEnvironmentChange}
+              className="text-sm border border-gray-300 rounded px-2 py-1"
             >
-              Reconnect
-            </button>
-          )}
+              <option value="local">Local</option>
+              <option value="testing">Testing</option>
+            </select>
+          </div>
         </div>
         
         {!isConnected && (
-          <div className="mt-2 text-xs text-red-600">
-            The connection to the server is not established. Make sure the backend is running at http://127.0.0.1:8000 and click 'Reconnect'.
+          <div className="flex items-center justify-between">
+            <div className="text-xs text-red-600">
+              {environment === 'local' 
+                ? 'La conexión al servidor local no se pudo establecer. Asegúrate de que el backend esté ejecutándose en http://127.0.0.1:8000.'
+                : 'La conexión al servidor de testing no se pudo establecer. Verifica tu conexión a Internet.'}
+            </div>
+            <button 
+              onClick={reconnect}
+              className="ml-2 text-sm text-indigo-600 hover:text-indigo-800 whitespace-nowrap"
+            >
+              Reconectar
+            </button>
           </div>
         )}
       </div>
@@ -139,6 +159,9 @@ export default function StreamingQuoteForm() {
         <div className="space-y-4">
           <div className="p-4 bg-gray-50 rounded-md">
             <h3 className="text-lg font-semibold mb-2">Quote Processing</h3>
+            <div className="text-xs text-gray-500 mb-2">
+              Environment: <span className="font-medium">{environment === 'local' ? 'Local' : 'Testing'}</span>
+            </div>
             <div className="space-y-2 font-mono text-sm bg-black text-green-400 p-4 rounded overflow-auto max-h-96">
               {filteredMessages.length > 0 ? (
                 filteredMessages.map((message, index) => (
